@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuoteFlow – Random Quote Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf8f3;
+    --ink: #1a1510;
+    --muted: #8a7e6e;
+    --accent: #c0392b;
+    --card: #ffffff;
+    --border: #e8e0d0;
+    --shadow: rgba(26,21,16,0.08);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--ink); font-family:'Playfair Display',serif;
+    min-height:100vh; display:flex; flex-direction:column;
+    background-image: radial-gradient(circle at 20% 50%, rgba(192,57,43,0.04) 0%, transparent 60%),
+                      radial-gradient(circle at 80% 20%, rgba(192,57,43,0.03) 0%, transparent 40%);
+  }
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1.5rem 3rem; border-bottom:1px solid var(--border);
+  }
+  .logo { font-size:1.3rem; font-weight:700; letter-spacing:0.02em; }
+  .logo span { color:var(--accent); }
+  .counter { font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--muted); }
+
+  main {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:3rem 2rem; max-width:860px; margin:0 auto; width:100%;
+  }
+
+  .category-row { display:flex; gap:0.6rem; flex-wrap:wrap; justify-content:center; margin-bottom:3rem; }
+  .cat-btn {
+    padding:0.35rem 1rem; border-radius:99px; border:1px solid var(--border);
+    background:none; cursor:pointer; font-family:'IBM Plex Mono',monospace;
+    font-size:0.72rem; letter-spacing:0.05em; color:var(--muted); transition:all 0.2s; text-transform:uppercase;
+  }
+  .cat-btn.active, .cat-btn:hover { background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .quote-card {
+    background:var(--card); border:1px solid var(--border); border-radius:4px;
+    padding:3.5rem 4rem; width:100%; position:relative;
+    box-shadow:0 4px 40px var(--shadow), 0 1px 3px rgba(0,0,0,0.04);
+    transition:opacity 0.35s ease, transform 0.35s ease;
+  }
+  .quote-card.hidden { opacity:0; transform:translateY(10px); }
+  .ornament { color:var(--accent); font-size:5rem; line-height:1; position:absolute; top:1.5rem; left:2.5rem; opacity:0.15; font-family:Georgia,serif; }
+  .quote-text {
+    font-size:1.55rem; line-height:1.7; font-style:italic; font-weight:400;
+    color:var(--ink); margin-bottom:2rem; padding-top:1rem; position:relative; z-index:1;
+  }
+  .quote-meta { display:flex; align-items:center; gap:1.5rem; }
+  .meta-line { width:40px; height:2px; background:var(--accent); border-radius:1px; }
+  .author-name { font-size:0.95rem; font-weight:700; font-style:normal; letter-spacing:0.05em; text-transform:uppercase; }
+  .author-year { font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--muted); margin-top:0.2rem; }
+  .quote-tag {
+    position:absolute; top:1.5rem; right:1.5rem;
+    background:rgba(192,57,43,0.08); color:var(--accent);
+    padding:0.3rem 0.8rem; border-radius:99px; font-size:0.7rem;
+    font-family:'IBM Plex Mono',monospace; letter-spacing:0.08em; text-transform:uppercase;
+  }
+
+  .actions { display:flex; gap:1rem; margin-top:2rem; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .btn-new {
+    display:flex; align-items:center; gap:0.6rem;
+    background:var(--ink); color:#fff; border:none; border-radius:4px;
+    padding:0.85rem 2rem; cursor:pointer; font-family:'IBM Plex Mono',monospace;
+    font-size:0.82rem; font-weight:500; letter-spacing:0.05em;
+    transition:all 0.2s; text-transform:uppercase;
+  }
+  .btn-new:hover { background:var(--accent); transform:translateY(-1px); box-shadow:0 4px 15px rgba(192,57,43,0.3); }
+  .btn-icon {
+    background:none; border:1px solid var(--border); border-radius:4px;
+    padding:0.85rem 1.1rem; cursor:pointer; font-size:1rem; transition:all 0.2s;
+    color:var(--muted);
+  }
+  .btn-icon:hover { border-color:var(--ink); color:var(--ink); }
+  .btn-icon.liked { color:var(--accent); border-color:var(--accent); }
+
+  .saved-row { margin-top:0.5rem; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted); text-align:center; }
+  
+  /* Saved quotes panel */
+  .panel-toggle { display:flex; align-items:center; gap:0.5rem; background:none; border:1px solid var(--border); border-radius:4px; padding:0.5rem 1rem; cursor:pointer; font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--muted); transition:all 0.2s; margin-top:1rem; text-transform:uppercase; letter-spacing:0.05em; }
+  .panel-toggle:hover { border-color:var(--ink); color:var(--ink); }
+  .saved-panel { background:var(--card); border:1px solid var(--border); border-radius:4px; padding:1.5rem; margin-top:1rem; width:100%; display:none; }
+  .saved-panel.open { display:block; }
+  .saved-panel h4 { font-size:0.8rem; font-family:'IBM Plex Mono',monospace; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:1rem; }
+  .saved-item { padding:0.8rem 0; border-bottom:1px solid var(--border); }
+  .saved-item:last-child { border-bottom:none; }
+  .saved-item .si-text { font-style:italic; font-size:0.9rem; margin-bottom:0.3rem; }
+  .saved-item .si-author { font-size:0.75rem; color:var(--muted); font-family:'IBM Plex Mono',monospace; }
+
+  footer { text-align:center; padding:1.5rem; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--muted); border-top:1px solid var(--border); }
+  .spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; }
+  @keyframes spin { to{ transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Quote<span>Flow</span></div>
+  <div class="counter" id="viewCount">0 quotes viewed</div>
+</header>
+
+<main>
+  <div class="category-row" id="catRow"></div>
+
+  <div class="quote-card" id="quoteCard">
+    <div class="ornament">"</div>
+    <div class="quote-tag" id="quoteTag">Motivational</div>
+    <div class="quote-text" id="quoteText">Loading your daily inspiration...</div>
+    <div class="quote-meta">
+      <div class="meta-line"></div>
+      <div>
+        <div class="author-name" id="authorName">—</div>
+        <div class="author-year" id="authorInfo"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-new" onclick="newQuote()" id="newBtn">
+      <span id="btnLabel">New Quote</span>
+    </button>
+    <button class="btn-icon" id="likeBtn" onclick="toggleLike()" title="Save quote">♡</button>
+    <button class="btn-icon" onclick="copyQuote()" title="Copy to clipboard">⎘</button>
+    <button class="btn-icon" onclick="shareQuote()" title="Share">↗</button>
+  </div>
+  <div class="saved-row" id="savedCount">0 saved</div>
+
+  <button class="panel-toggle" onclick="togglePanel()">📚 Saved Quotes (<span id="savedCountPanel">0</span>)</button>
+  <div class="saved-panel" id="savedPanel">
+    <h4>Your Saved Quotes</h4>
+    <div id="savedList"></div>
+  </div>
+</main>
+
+<footer>QuoteFlow &mdash; Curated words that matter</footer>
+
+<script>
+const quotes = [
+  {text:"The only way to do great work is to love what you do.",author:"Steve Jobs",info:"1955–2011, Apple Co-founder",cat:"Motivational"},
+  {text:"In the middle of every difficulty lies opportunity.",author:"Albert Einstein",info:"1879–1955, Physicist",cat:"Wisdom"},
+  {text:"It does not matter how slowly you go as long as you do not stop.",author:"Confucius",info:"551–479 BC, Philosopher",cat:"Perseverance"},
+  {text:"Life is what happens when you're busy making other plans.",author:"John Lennon",info:"1940–1980, Musician",cat:"Life"},
+  {text:"The future belongs to those who believe in the beauty of their dreams.",author:"Eleanor Roosevelt",info:"1884–1962, First Lady",cat:"Motivational"},
+  {text:"Innovation distinguishes between a leader and a follower.",author:"Steve Jobs",info:"1955–2011, Apple Co-founder",cat:"Leadership"},
+  {text:"Strive not to be a success, but rather to be of value.",author:"Albert Einstein",info:"1879–1955, Physicist",cat:"Wisdom"},
+  {text:"Two roads diverged in a wood, and I took the one less traveled by.",author:"Robert Frost",info:"1874–1963, Poet",cat:"Life"},
+  {text:"I have not failed. I've just found 10,000 ways that won't work.",author:"Thomas Edison",info:"1847–1931, Inventor",cat:"Perseverance"},
+  {text:"The mind is everything. What you think you become.",author:"Buddha",info:"c.563–483 BC, Philosopher",cat:"Wisdom"},
+  {text:"An unexamined life is not worth living.",author:"Socrates",info:"470–399 BC, Philosopher",cat:"Wisdom"},
+  {text:"Spread love everywhere you go. Let no one ever come to you without leaving happier.",author:"Mother Teresa",info:"1910–1997, Humanitarian",cat:"Life"},
+  {text:"When you reach the end of your rope, tie a knot in it and hang on.",author:"Franklin D. Roosevelt",info:"1882–1945, US President",cat:"Perseverance"},
+  {text:"Always remember that you are absolutely unique. Just like everyone else.",author:"Margaret Mead",info:"1901–1978, Anthropologist",cat:"Life"},
+  {text:"Don't judge each day by the harvest you reap but by the seeds that you plant.",author:"Robert Louis Stevenson",info:"1850–1894, Author",cat:"Wisdom"},
+  {text:"The best time to plant a tree was 20 years ago. The second best time is now.",author:"Chinese Proverb",info:"Ancient Wisdom",cat:"Motivational"},
+  {text:"An eye for an eye will only make the whole world blind.",author:"Mahatma Gandhi",info:"1869–1948, Leader",cat:"Leadership"},
+  {text:"I've learned that people will forget what you said, but people will never forget how you made them feel.",author:"Maya Angelou",info:"1928–2014, Poet",cat:"Leadership"},
+  {text:"Whether you think you can or you think you can't, you're right.",author:"Henry Ford",info:"1863–1947, Industrialist",cat:"Motivational"},
+  {text:"The only impossible journey is the one you never begin.",author:"Tony Robbins",info:"b. 1960, Motivational Speaker",cat:"Motivational"},
+  {text:"In three words I can sum up everything I've learned about life: it goes on.",author:"Robert Frost",info:"1874–1963, Poet",cat:"Life"},
+  {text:"To be yourself in a world that is constantly trying to make you something else is the greatest accomplishment.",author:"Ralph Waldo Emerson",info:"1803–1882, Essayist",cat:"Wisdom"},
+  {text:"Real leadership is leaders recognizing that they serve the people that they lead.",author:"Pete Buttigieg",info:"b. 1982, Politician",cat:"Leadership"},
+  {text:"Success is not final, failure is not fatal: it is the courage to continue that counts.",author:"Winston Churchill",info:"1874–1965, Prime Minister",cat:"Perseverance"},
+];
+
+const categories = ["All", ...new Set(quotes.map(q=>q.cat))];
+let activeCategory = "All";
+let currentQuote = null;
+let savedQuotes = JSON.parse(localStorage.getItem('savedQuotes')||'[]');
+let viewCount = parseInt(localStorage.getItem('viewCount')||'0');
+let usedIndices = [];
+
+function buildCats() {
+  const row = document.getElementById('catRow');
+  row.innerHTML = categories.map(c=>`<button class="cat-btn${c===activeCategory?' active':''}" onclick="setCategory('${c}')">${c}</button>`).join('');
+}
+
+function setCategory(cat) {
+  activeCategory = cat;
+  usedIndices = [];
+  buildCats();
+  newQuote();
+}
+
+function getFilteredQuotes() {
+  return activeCategory === 'All' ? quotes : quotes.filter(q=>q.cat===activeCategory);
+}
+
+function newQuote(skipAnim=false) {
+  const btn = document.getElementById('newBtn');
+  const card = document.getElementById('quoteCard');
+  
+  if(!skipAnim) {
+    card.classList.add('hidden');
+    btn.innerHTML = '<span class="spinner"></span>';
+    setTimeout(()=>{
+      pickQuote();
+      card.classList.remove('hidden');
+      btn.innerHTML = 'New Quote';
+    }, 350);
+  } else {
+    pickQuote();
+  }
+}
+
+function pickQuote() {
+  const pool = getFilteredQuotes();
+  if(usedIndices.length >= pool.length) usedIndices = [];
+  let idx;
+  do { idx = Math.floor(Math.random()*pool.length); } while(usedIndices.includes(idx) && pool.length > 1);
+  usedIndices.push(idx);
+  currentQuote = pool[idx];
+  
+  document.getElementById('quoteText').textContent = `"${currentQuote.text}"`;
+  document.getElementById('authorName').textContent = currentQuote.author;
+  document.getElementById('authorInfo').textContent = currentQuote.info;
+  document.getElementById('quoteTag').textContent = currentQuote.cat;
+  
+  viewCount++;
+  localStorage.setItem('viewCount', viewCount);
+  document.getElementById('viewCount').textContent = `${viewCount} quote${viewCount!==1?'s':''} viewed`;
+  
+  updateLikeBtn();
+}
+
+function toggleLike() {
+  if(!currentQuote) return;
+  const idx = savedQuotes.findIndex(q=>q.text===currentQuote.text);
+  if(idx>=0) savedQuotes.splice(idx,1);
+  else savedQuotes.push(currentQuote);
+  localStorage.setItem('savedQuotes',JSON.stringify(savedQuotes));
+  updateLikeBtn();
+  updateSavedPanel();
+}
+
+function updateLikeBtn() {
+  if(!currentQuote) return;
+  const liked = savedQuotes.some(q=>q.text===currentQuote.text);
+  const btn = document.getElementById('likeBtn');
+  btn.textContent = liked ? '♥' : '♡';
+  btn.classList.toggle('liked',liked);
+  document.getElementById('savedCount').textContent = `${savedQuotes.length} saved`;
+  document.getElementById('savedCountPanel').textContent = savedQuotes.length;
+}
+
+function copyQuote() {
+  if(!currentQuote) return;
+  navigator.clipboard.writeText(`"${currentQuote.text}" — ${currentQuote.author}`);
+  const btn = event.currentTarget;
+  btn.textContent = '✓';
+  setTimeout(()=>btn.textContent='⎘',1500);
+}
+
+function shareQuote() {
+  if(!currentQuote) return;
+  if(navigator.share) {
+    navigator.share({title:'QuoteFlow',text:`"${currentQuote.text}" — ${currentQuote.author}`});
+  } else {
+    copyQuote();
+  }
+}
+
+function togglePanel() {
+  const panel = document.getElementById('savedPanel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')) updateSavedPanel();
+}
+
+function updateSavedPanel() {
+  const list = document.getElementById('savedList');
+  if(savedQuotes.length===0){
+    list.innerHTML='<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:0.8rem;">No saved quotes yet. Heart a quote to save it!</div>';
+    return;
+  }
+  list.innerHTML = savedQuotes.map(q=>`
+    <div class="saved-item">
+      <div class="si-text">"${q.text}"</div>
+      <div class="si-author">${q.author} · ${q.cat}</div>
+    </div>`).join('');
+}
+
+buildCats();
+newQuote(true);
+updateSavedPanel();
+</script>
+</body>
+</html>
